@@ -1,6 +1,8 @@
 from crewai import Task
 from tools import SearchFilterTool, RecipeDatabaseTool, RecipeFormatterTool
 from dotenv import load_dotenv
+from agents import recipe_researcher, recipe_creator, recipe_formatter
+
 import os
 
 # Load environment variables for API
@@ -11,9 +13,8 @@ llm = {
     "model": os.environ["OPENAI_MODEL_NAME"],
     "api_key": os.environ["OPENAI_API_KEY"]
 }
-# Define tasks
 
-## 1. Task: Search for recipes based on user preferences
+# Define tasks
 search_recipes_task = Task(
     name="SearchRecipes",
     description=(
@@ -28,11 +29,12 @@ search_recipes_task = Task(
         "that match the criteria provided by the user."
     ),
     llm=llm,
-    allow_subtasks=False,
-    expected_output="recipe_ids"  # Explicitly define the expected output type here
+    allow_subtasks=True,
+    expected_output="recipe_ids",
+    agent=recipe_researcher 
 )
 
-## 2. Task: Fetch detailed information about the selected recipes
+
 fetch_recipe_details_task = Task(
     name="FetchRecipeDetails",
     description=(
@@ -47,11 +49,11 @@ fetch_recipe_details_task = Task(
         "of the recipes corresponding to the provided IDs."
     ),
     llm=llm,
-    allow_subtasks=False,
-    expected_output="recipe_details"  # Explicitly define the expected output type here
+    allow_subtasks=True,
+    expected_output="recipe_details"  ,# Explicitly define the expected output type here
+    agent= recipe_researcher 
 )
 
-## 3. Task: Generate a customized recipe
 generate_custom_recipe_task = Task(
     name="GenerateCustomRecipe",
     description=(
@@ -67,10 +69,10 @@ generate_custom_recipe_task = Task(
     ),
     llm=llm,
     allow_subtasks=False,
-    expected_output="custom_recipe" # Explicitly define the expected output type here
+    expected_output="custom_recipe" ,
+    agent= recipe_creator
 )
 
-## 4. Task: Format the recipe for display or sharing
 format_recipe_task = Task(
     name="FormatRecipe",
     description=(
@@ -86,10 +88,11 @@ format_recipe_task = Task(
     ),
     llm=llm,
     allow_subtasks=False,
-    expected_output="formatted_recipe"  # Explicitly define the expected output type here
+    expected_output="formatted_recipe",  # Explicitly define the expected output type here
+    agent= recipe_formatter
+
 )
 
-## 5. Main Task: Orchestrate steps to produce the final recipe
 main_task = Task(
     name="GenerateAndFormatRecipe",
     description=(
@@ -104,6 +107,7 @@ main_task = Task(
         "are properly connected to produce a complete and accurate final result."
     ),
     llm=llm,
-    allow_subtasks=True,
-    expected_output="formatted_recipe"  # Explicitly define the expected output type here
+    allow_subtasks=True,  # Ensure this is True
+    expected_output="formatted_recipe"
 )
+

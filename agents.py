@@ -1,6 +1,5 @@
 from crewai import Agent
 from tools import SearchFilterTool, RecipeDatabaseTool, RecipeFormatterTool
-
 from dotenv import load_dotenv
 import os
 
@@ -18,16 +17,14 @@ llm = {
 }
 
 # Initialisation des outils
-
-# Create instances of the tools
 search_filter_tool = SearchFilterTool(name="Search Filter", description="Filter recipe searches based on criteria.") 
 recipe_database_tool = RecipeDatabaseTool(name="Recipe Database", description="Search in recipe database.") 
 recipe_formatter_tool = RecipeFormatterTool(name="Recipe Formatter", description="Format recipes into easy-to-follow instructions.")
 
-# Create the agents
+# Création des agents
 recipe_researcher = Agent(
     role='Recipe Researcher',
-    goal='Find recipes based on ingredient {ingredient} and type {dish_type}. Filter by preparation time or diet if provided.',
+    goal='Find recipes based on ingredient {ingredient_filters} and type {dish_type}. Filter by preparation time or diet if provided.',
     verbose=True,
     memory=True,
     backstory="An expert in culinary research, specializing in finding recipes from a database and applying user-specific filters like diet and preparation time.",
@@ -38,7 +35,7 @@ recipe_researcher = Agent(
 
 recipe_creator = Agent(
     role='Recipe Creator',
-    goal='Create a custom recipe based on user preferences: {preferences}.',
+    goal='Create a custom recipe based on user preferences: {user_preferences}.',
     verbose=True,
     memory=True,
     backstory="A creative chef who designs unique recipes tailored to user preferences, ensuring the recipe is practical and easy to follow.",
