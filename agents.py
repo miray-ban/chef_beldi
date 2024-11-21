@@ -2,7 +2,6 @@ from crewai import Agent
 from textwrap import dedent
 from dotenv import load_dotenv
 import os
-
 from tools import SearchFilterTool, RecipeDatabaseTool, RecipeFormatterTool
 
 """
@@ -37,11 +36,11 @@ class RecipeAgents:
         load_dotenv()
 
         self.llm = {
-            "model": os.getenv("OPENAI_MODEL_NAME", "gpt-4-0125-preview"),
+            "model": os.getenv("OPENAI_MODEL_NAME", "ruslandev/llama-3-8b-gpt-4o"),
             "api_key": os.getenv("OPENAI_API_KEY")
         }
 
-        # Initialisation des outils
+        # Initialisation des outils         
         self.search_filter_tool = SearchFilterTool(
             name="Search Filter",
             description="Filter recipe searches based on criteria."
