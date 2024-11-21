@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 import os
 from textwrap import dedent
 
-# Load environment variables for API
 load_dotenv()
 os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
 os.environ["OPENAI_MODEL_NAME"] = "ruslandev/llama-3-8b-gpt-4o"
@@ -43,63 +42,57 @@ class RecipeCrew:
             "dish_type": self.dish_type
         }
         
-        print("Task Inputs:", inputs)  # Debug log for inputs
+        print("Task Inputs:", inputs)  
 
         try:
-            # Step 1: Kickoff the crew for initial recipe search and filtering
             result = self.crew.kickoff(inputs=inputs)
-            print("Crew Result:", result)  # Debug log for results
+            print("Crew Result:", result)  
             
             if 'recipe_ids' not in result:
                 raise KeyError("Error: 'recipe_ids' key is missing in the result.")
             recipe_ids = result['recipe_ids']
-            print("Recipe IDs:", recipe_ids)  # Debug log for recipe IDs
+            print("Recipe IDs:", recipe_ids)  
 
-            # Step 2: Fetch detailed recipe data
             fetch_result = self.crew.kickoff({"recipe_ids": recipe_ids})
-            print("Fetch Result:", fetch_result)  # Debug log for fetch result
+            print("Fetch Result:", fetch_result)  
             
             if 'recipe_details' not in fetch_result:
                 raise KeyError("Error: 'recipe_details' key is missing in the fetch result.")
             recipe_details = fetch_result['recipe_details']
-            print("Fetched Recipe Details:", recipe_details)  # Debug log for recipe details
+            print("Fetched Recipe Details:", recipe_details)  
 
-            # Step 3: Generate a custom recipe based on preferences and filters
             custom_recipe_result = self.crew.kickoff({
                 "user_preferences": self.user_preferences,
                 "ingredient_filters": self.ingredient_filters
             })
-            print("Custom Recipe Result:", custom_recipe_result)  # Debug log for custom recipe result
+            print("Custom Recipe Result:", custom_recipe_result)  
             
             if 'custom_recipe' not in custom_recipe_result:
                 raise KeyError("Error: 'custom_recipe' key is missing in the custom recipe result.")
             custom_recipe = custom_recipe_result['custom_recipe']
-            print("Generated Custom Recipe:", custom_recipe)  # Debug log for custom recipe
+            print("Generated Custom Recipe:", custom_recipe)  
 
-            # Step 4: Prepare inputs for the formatting task
             format_inputs = {
                 "recipe_details": recipe_details,
                 "custom_recipe": custom_recipe
             }
-            print("Formatting Inputs:", format_inputs)  # Debug log for formatting inputs
+            print("Formatting Inputs:", format_inputs)  
 
-            # Step 5: Format the final recipe
             formatted_recipe_result = self.crew.kickoff(format_inputs)
-            print("Formatted Recipe Result:", formatted_recipe_result)  # Debug log for formatted recipe result
-            
+            print("Formatted Recipe Result:", formatted_recipe_result)  
+
             if 'formatted_recipe' not in formatted_recipe_result:
                 raise KeyError("Error: 'formatted_recipe' key is missing in the result.")
             
             formatted_recipe = formatted_recipe_result['formatted_recipe']
-            print("Formatted Recipe:", formatted_recipe)  # Debug log for the formatted recipe
+            print("Formatted Recipe:", formatted_recipe)  
             
             return formatted_recipe
 
         except KeyError as e:
-            print(str(e))  # Log the error if any key is missing
-            return None  # Exit gracefully on error
+            print(str(e))  
+            return None  
 
-# Main function for interacting with the user and executing the recipe generation
 if __name__ == "__main__":
     print("## Welcome to the Recipe Generator Crew")
     print('-------------------------------')
