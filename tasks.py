@@ -7,12 +7,14 @@ import os
 
 # Load environment variables for API
 load_dotenv()
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENAI_API_KEY")
-os.environ["OPENAI_MODEL_NAME"] = "ruslandev/llama-3-8b-gpt-4o"
-llm = {
-    "model": os.environ["OPENAI_MODEL_NAME"],
-    "api_key": os.environ["OPENAI_API_KEY"]
-}
+api_key = os.getenv("OPENAI_API_KEY")
+model_name = os.getenv("OPENAI_MODEL_NAME", "ruslandev/llama-3-8b-gpt-4o")
+
+if not api_key or not model_name:
+    raise EnvironmentError("Missing OPENAI_API_KEY or OPENAI_MODEL_NAME in environment variables.")
+
+llm = {"model": model_name, "api_key": api_key}
+
 # Initialize tools
 search_filter_tool = SearchFilterTool(name="Search Filter", description="Filter recipe searches based on criteria.")
 recipe_database_tool = RecipeDatabaseTool(name="Recipe Database", description="Search in recipe database.")
@@ -42,7 +44,7 @@ class RecipeTasks:
             """),
             agent=agent,
             tool=SearchFilterTool,
-            inputs=["user_preferences", "ingredient_filters", "dish_type"],
+            inputs={"user_preferences": user_preferences, "ingredient_filters": ingredient_filters, "dish_type": dish_type},
             outputs=["recipe_ids"],    
             expected_output="A list of recipe IDs matching the search criteria.",
             instructions="Use the SearchFilterTool to look up recipes and return a list of recipe IDs."
@@ -62,7 +64,7 @@ class RecipeTasks:
             """),
             agent=agent,
             tool=RecipeDatabaseTool,
-            inputs=["recipe_ids"],
+            inputs={"recipe_ids": recipe_ids},
             outputs=["recipe_details"],
             expected_output="Detailed information for the provided recipe IDs (name, ingredients, steps, cooking time).",
 
@@ -84,7 +86,7 @@ class RecipeTasks:
             """),
             agent=agent,
             tool=None,  # No specific tool, as this task uses the LLM directly
-            inputs=["user_preferences", "ingredient_filters"],
+            inputs={"user_preferences": user_preferences, "ingredient_filters": ingredient_filters},
             outputs=["custom_recipe"],
             expected_output="A fully generated recipe with ingredients, steps, and additional notes.",
 
@@ -106,7 +108,7 @@ class RecipeTasks:
             """),
             agent=agent,
             tool=RecipeFormatterTool,
-            inputs=["recipe_details", "custom_recipe"],
+            inputs={"recipe_details": recipe_details, "custom_recipe": custom_recipe},
             outputs=["formatted_recipe"],
             expected_output="A user-friendly and visually appealing formatted recipe.",
 
@@ -117,6 +119,7 @@ class RecipeTasks:
         )
 
     def main_task(self, agent, user_preferences, ingredient_filters, dish_type):
+       
         return Task(
             description=dedent(f"""
             **Task**: Generate and Format a Complete Recipe
@@ -133,11 +136,11 @@ class RecipeTasks:
             agent=agent,
             subtasks=[
                 self.search_recipes(agent, user_preferences, ingredient_filters, dish_type),
-                self.fetch_recipe_details(agent, ["recipe_ids"]),
+                self.fetch_recipe_details(agent, "recipe_ids"),
                 self.generate_custom_recipe(agent, user_preferences, ingredient_filters),
-                self.format_recipe(agent, ["recipe_details"], ["custom_recipe"])
+                self.format_recipe(agent, "recipe_details", "custom_recipe")
             ],
-            inputs=["user_preferences", "ingredient_filters", "dish_type"],
+            inputs={"user_preferences": user_preferences, "ingredient_filters": ingredient_filters, "dish_type": dish_type},
             outputs=["formatted_recipe"],
             expected_output="A fully generated and formatted recipe, ready for display.",
 
