@@ -1,6 +1,7 @@
 from crewai import Agent
 from textwrap import dedent
 from dotenv import load_dotenv
+from crewai import LLM
 import os
 
 """
