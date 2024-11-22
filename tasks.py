@@ -11,7 +11,7 @@ load_dotenv()
 groq_api_key = os.getenv("GROQ_API_KEY")
 model_name = os.getenv("GROG_MODEL_NAME")
 
-if not api_key or not model_name:
+if not groq_api_key or not model_name:
     raise EnvironmentError("Missing OPENAI_API_KEY or OPENAI_MODEL_NAME in environment variables.")
 
 llm = LLM(
