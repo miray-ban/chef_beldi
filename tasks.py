@@ -1,4 +1,5 @@
 from crewai import Task
+from crewai import LLM
 from tools import SearchFilterTool, RecipeDatabaseTool, RecipeFormatterTool
 from dotenv import load_dotenv
 from agents import RecipeAgents
@@ -7,155 +8,105 @@ import os
 
 # Load environment variables for API
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-model_name = os.getenv("OPENAI_MODEL_NAME", "ruslandev/llama-3-8b-gpt-4o")
+groq_api_key = os.getenv("GROQ_API_KEY")
+model_name = os.getenv("GROG_MODEL_NAME")
 
 if not api_key or not model_name:
     raise EnvironmentError("Missing OPENAI_API_KEY or OPENAI_MODEL_NAME in environment variables.")
 
-llm = {"model": model_name, "api_key": api_key}
-
-# Initialize tools
-search_filter_tool = SearchFilterTool(name="Search Filter", description="Filter recipe searches based on criteria.")
-recipe_database_tool = RecipeDatabaseTool(name="Recipe Database", description="Search in recipe database.")
-recipe_formatter_tool = RecipeFormatterTool(name="Recipe Formatter", description="Format recipes into easy-to-follow instructions.")
+llm = LLM(
+    model=model_name,
+    api_key=groq_api_key
+)
 
 # Initialize agents
 recipe_agents = RecipeAgents()
 recipe_researcher = recipe_agents.recipe_researcher()
-recipe_creator = recipe_agents.recipe_creator()
 recipe_formatter = recipe_agents.recipe_formatter()
 
 class RecipeTasks:
-    def search_recipes(self, agent, user_preferences, ingredient_filters, dish_type):
+    def search_recipes(self, agent, dietary_restrictions, preferred_cuisine, avoid_ingredients, ingredient_filters):
         return Task(
-            description=dedent(f"""
-            **Task**: Search for Recipes
-            **Description**: Search for recipes in the database based on user preferences, such as dish type, 
-                main ingredients, or dietary restrictions. Use the SearchFilterTool to look up recipes in the database 
-                that match the criteria provided by the user.
-
-            **Parameters**:
-            - User Preferences: {user_preferences}
-            - Ingredient Filters: {ingredient_filters}
-            - Dish Type: {dish_type}
-
-            **Note**: Ensure results are highly relevant by accurately applying filters.
+            description=dedent("""
+                Find and describe a recipe that matches the following criteria:
+                1. Dietary Restrictions: {dietary_restrictions}.
+                2. Preferred Cuisine: {preferred_cuisine}.
+                3. Avoid Ingredients: {avoid_ingredients}.
+                4. Must Include Ingredients: {ingredient_filters}.
+                Provide a detailed description of the recipe, including the title, list of ingredients, and step-by-step instructions.
+                Your response must follow this exact format
             """),
             agent=agent,
-            tool=SearchFilterTool,
-            inputs={"user_preferences": user_preferences, "ingredient_filters": ingredient_filters, "dish_type": dish_type},
-            outputs=["recipe_ids"],    
+            inputs={"dietary_restrictions": dietary_restrictions, "preferred_cuisine": preferred_cuisine, "avoid_ingredients": avoid_ingredients, "ingredient_filters": ingredient_filters},
+            outputs=["recipe"],
             expected_output="A list of recipe IDs matching the search criteria.",
             instructions="Use the SearchFilterTool to look up recipes and return a list of recipe IDs."
         )
 
-    def fetch_recipe_details(self, agent, recipe_ids):
+
+    def format_recipe(self, agent, recipe_details):
         return Task(
-            description=dedent(f"""
-            **Task**: Fetch Recipe Details
-            **Description**: Retrieve detailed information about the identified recipes, including the name, ingredients, 
-                preparation steps, cooking time, and nutritional information.
-
-            **Parameters**:
-            - Recipe IDs: {recipe_ids}
-
-            **Note**: Ensure data integrity by cross-verifying recipe details.
-            """),
+            description=dedent(
+                """
+                Format the recipe into easy-to-follow instructions, including cooking time, servings, and ingredients.
+                Ensure the recipe is structured with clear headings for the title, ingredients, and instructions.
+                """
+            ),
+            expected_output="A polished, user-friendly format of the recipe, including title, ingredients, and steps.",
             agent=agent,
-            tool=RecipeDatabaseTool,
-            inputs={"recipe_ids": recipe_ids},
-            outputs=["recipe_details"],
-            expected_output="Detailed information for the provided recipe IDs (name, ingredients, steps, cooking time).",
-
-            instructions="Query the database using the RecipeDatabaseTool to get full details of the recipes."
+            inputs={"recipe": recipe_details},
         )
 
-    def generate_custom_recipe(self, agent, user_preferences, ingredient_filters):
-        return Task(
-            description=dedent(f"""
-            **Task**: Generate a Custom Recipe
-            **Description**: Create a personalized recipe based on the user's preferences, including adjustments 
-                for dietary restrictions or specific ingredients.
+    def main_task(self, agent_recipe_researcher, agent_recipe_formatter, dietary_restrictions, preferred_cuisine, avoid_ingredients, ingredient_filters):
 
-            **Parameters**:
-            - User Preferences: {user_preferences}
-            - Ingredient Filters: {ingredient_filters}
-
-            **Note**: Leverage creativity to design a recipe that is both practical and appealing.
-            """),
-            agent=agent,
-            tool=None,  # No specific tool, as this task uses the LLM directly
-            inputs={"user_preferences": user_preferences, "ingredient_filters": ingredient_filters},
-            outputs=["custom_recipe"],
-            expected_output="A fully generated recipe with ingredients, steps, and additional notes.",
-
-            instructions="Use the LLM to generate a complete recipe with detailed instructions."
-        )
-
-    def format_recipe(self, agent, recipe_details, custom_recipe):
-        return Task(
-            description=dedent(f"""
-            **Task**: Format the Recipe
-            **Description**: Format the final recipe to make it ready for display or sharing with the user. 
-                This includes structuring it clearly, with well-defined sections and suggestions.
-
-            **Parameters**:
-            - Recipe Details: {recipe_details}
-            - Custom Recipe: {custom_recipe}
-
-            **Note**: Ensure the formatted recipe is user-friendly and visually appealing.
-            """),
-            agent=agent,
-            tool=RecipeFormatterTool,
-            inputs={"recipe_details": recipe_details, "custom_recipe": custom_recipe},
-            outputs=["formatted_recipe"],
-            expected_output="A user-friendly and visually appealing formatted recipe.",
-
-            instructions=(
-                "Use the RecipeFormatterTool to structure the recipe. Ensure the result includes sections like: "
-                "Name, Ingredients, Step-by-step Instructions, Cooking Time, Servings, and Additional Notes."
-            )
-        )
-
-    def main_task(self, agent, user_preferences, ingredient_filters, dish_type):
-       
         return Task(
             description=dedent(f"""
             **Task**: Generate and Format a Complete Recipe
-            **Description**: Orchestrate all the necessary steps to search, generate, and format a complete recipe. 
+            **Description**: Orchestrate all the necessary steps to search, generate, and format a complete recipe.
                 This includes searching, fetching details, generating, and formatting.
 
             **Parameters**:
-            - User Preferences: {user_preferences}
+            - Dietary restrictions: {dietary_restrictions}
             - Ingredient Filters: {ingredient_filters}
-            - Dish Type: {dish_type}
+            - Preferred cuisine: {preferred_cuisine}
+            - Avoid ingredients: {avoid_ingredients}
 
             **Note**: Ensure seamless execution of subtasks and deliver a high-quality final recipe.
             """),
-            agent=agent,
+            agent=agent_recipe_formatter,
             subtasks=[
-                self.search_recipes(agent, user_preferences, ingredient_filters, dish_type),
-                self.fetch_recipe_details(agent, "recipe_ids"),
-                self.generate_custom_recipe(agent, user_preferences, ingredient_filters),
-                self.format_recipe(agent, "recipe_details", "custom_recipe")
+                self.search_recipes(agent_recipe_researcher, dietary_restrictions, preferred_cuisine, avoid_ingredients, ingredient_filters),
+                self.format_recipe(agent_recipe_formatter, "search_recipes.recipe_ids")
             ],
-            inputs={"user_preferences": user_preferences, "ingredient_filters": ingredient_filters, "dish_type": dish_type},
-            outputs=["formatted_recipe"],
             expected_output="A fully generated and formatted recipe, ready for display.",
 
-            instructions=(
-                "Coordinate the steps by calling each subtask. Ensure the inputs and outputs of each step "
-                "are properly connected to produce a complete and accurate final result."
-            )
         )
 
 # Example usage
 recipe_tasks = RecipeTasks()
 
 main_task = recipe_tasks.main_task(
-    agent=recipe_researcher,
-    user_preferences={"diet": "vegan", "cuisine": "Italian"},
+    agent_recipe_researcher=recipe_researcher,
+    agent_recipe_formatter=recipe_formatter,
+    dietary_restrictions="vegetarian",
     ingredient_filters=["tomatoes", "basil"],
-    dish_type="main_course"
+    avoid_ingredients= ["gluten"],
+    preferred_cuisine="Italian"
 )
+
+# Define the Crew
+recipe_crew = Crew(
+    agents=[recipe_researcher, recipe_formatter],
+    tasks=[main_task],  # Pass the Task object, not the method
+    process=Process.sequential,
+)
+
+inputs = {
+    "dietary_restrictions": "vegetarian",
+    "preferred_cuisine": "Italian",
+    "avoid_ingredients": ["gluten"],
+    "ingredient_filters": ["tomato", "basil", "cheese"],
+}
+
+# Execute the crew
+result = recipe_crew.kickoff()
