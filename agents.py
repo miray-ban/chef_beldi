@@ -2,7 +2,6 @@ from crewai import Agent
 from textwrap import dedent
 from dotenv import load_dotenv
 import os
-from tools import SearchFilterTool, RecipeDatabaseTool, RecipeFormatterTool
 
 """
 Creating Agents Cheat Sheet:
@@ -33,7 +32,6 @@ Notes:
 class RecipeAgents:
     def __init__(self):
         # Load environment variables
-        load_dotenv()
 
         api_key = os.getenv("OPENAI_API_KEY")
         model_name = os.getenv("OPENAI_MODEL_NAME", "ruslandev/llama-3-8b-gpt-4o")
@@ -41,23 +39,9 @@ class RecipeAgents:
         if not api_key or not model_name:
             raise EnvironmentError("Missing OPENAI_API_KEY or OPENAI_MODEL_NAME in environment variables.")
 
-        self.llm = {
-            "model": model_name,
-            "api_key": api_key
-        }
-
-        # Initialize tools
-        self.search_filter_tool = SearchFilterTool(
-            name="Search Filter",
-            description="Filter recipe searches based on criteria."
-        )
-        self.recipe_database_tool = RecipeDatabaseTool(
-            name="Recipe Database",
-            description="Search in recipe database."
-        )
-        self.recipe_formatter_tool = RecipeFormatterTool(
-            name="Recipe Formatter",
-            description="Format recipes into easy-to-follow instructions."
+        self.llm = LLM(
+            model="groq/llama3-8b-8192",
+            api_key="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"
         )
 
     def recipe_researcher(self):
@@ -68,44 +52,14 @@ class RecipeAgents:
             Agent: Configured recipe researcher agent.
         """
         return Agent(
-            role="Recipe Researcher",
-            backstory=dedent(
-                """An expert in culinary research, specializing in finding recipes 
-                from a database and applying user-specific filters like diet and preparation time."""
-            ),
-            goal=dedent(
-                """Find recipes based on ingredient {ingredient_filters} and type {dish_type}. 
-                Filter by preparation time or diet if provided."""
-            ),
-            tools=[self.recipe_database_tool, self.search_filter_tool],
-            verbose=True,
-            memory=True,
-            llm=self.llm,
-            allow_delegation=True,
-        )
+          role="Recipe Expert",
+          goal="Find and provide detailed descriptions of recipes tailored to specific criteria.",
+          backstory="ou are an expert chef specializing in finding recipes that fit dietary needs.",
+          llm=llm,
+          allow_delegation=True, 
+          memory=True,
+      )
 
-    def recipe_creator(self):
-        """
-        Creates an agent for generating custom recipes tailored to user preferences.
-
-        Returns:
-            Agent: Configured recipe creator agent.
-        """
-        return Agent(
-            role="Recipe Creator",
-            backstory=dedent(
-                """A creative chef who designs unique recipes tailored to user preferences, 
-                ensuring the recipe is practical and easy to follow."""
-            ),
-            goal=dedent(
-                """Create a custom recipe based on user preferences: {user_preferences}."""
-            ),
-            tools=[self.recipe_formatter_tool],
-            verbose=True,
-            memory=True,
-            llm=self.llm,
-            allow_delegation=False,
-        )
 
     def recipe_formatter(self):
         """
@@ -117,16 +71,15 @@ class RecipeAgents:
         return Agent(
             role="Recipe Formatter",
             backstory=dedent(
-                """An assistant specialized in formatting recipes into a polished format 
+                """You are an assistant specialized in formatting recipes into a polished format
                 that is easy to read and follow."""
             ),
             goal=dedent(
-                """Format the recipe {recipe} into easy-to-follow instructions, including 
+                """Format the recipe into easy-to-follow instructions, including
                 cooking time, servings, and ingredients."""
             ),
-            tools=[self.recipe_formatter_tool],
-            verbose=True,
-            memory=False,
-            llm=self.llm,
+            verbose=False,
+            memory=True,
+            llm=llm,
             allow_delegation=False,
         )
