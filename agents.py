@@ -32,16 +32,17 @@ Notes:
 class RecipeAgents:
     def __init__(self):
         # Load environment variables
-
-        api_key = os.getenv("OPENAI_API_KEY")
-        model_name = os.getenv("OPENAI_MODEL_NAME", "ruslandev/llama-3-8b-gpt-4o")
+        load_dotenv()
+      
+        groq_api_key = os.getenv("GROQ_API_KEY")
+        model_name = os.getenv("GROG_MODEL_NAME")
 
         if not api_key or not model_name:
             raise EnvironmentError("Missing OPENAI_API_KEY or OPENAI_MODEL_NAME in environment variables.")
 
         self.llm = LLM(
-            model="groq/llama3-8b-8192",
-            api_key="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"
+            model=model_name,
+            api_key=groq_api_key
         )
 
     def recipe_researcher(self):
